@@ -14,7 +14,7 @@ node-name需按实际情况修改为cfg.py文件中配置的节点名称
 ### 3.单机测试带宽
 使用root用户在当前目录下执行：
 ```
-python roce_test_self.py -h  m
+python roce_test_self.py -h 
 ```
 查看使用方法
 ### 4.双机测试带宽
