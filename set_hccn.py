@@ -70,14 +70,11 @@ class HCCN:
                 self.exec_cmd(cmd, "set_arp")
     
     # step 5
-    def set_leaf_arp(self, node):
-        #all_nodes = list(self.IPs.keys()).remove("common")
-        #res_nodes = all_nodes.remo
-        opposite = "node-1"
+    def set_gateway_arp(self, node):
         for i in range(8):
             cmd = "hccn_tool -i %d -arp -a dev eth%d ip %s mac %s" % \
-                (i, i, self.IPs[opposite][i]["ip"], self.IPs[opposite][i]["mac"])
-            self.exec_cmd(cmd, "set_leaf_arp")
+                (i, i, self.IPs["common"]["gateway"], self.IPs["common"]["gateway_mac"])
+            self.exec_cmd(cmd, "set_gateway_arp")
 
     # step 6
     def set_mtu(self, node, mtu=8192):
@@ -85,12 +82,12 @@ class HCCN:
             cmd = "hccn_tool -i %d -mtu -s size %d" % (i, mtu)
             self.exec_cmd(cmd, "set_mtu")
     
-    # 
+    # del step 1
     def clear_old_config(self, node):
         cmd = "cat /dev/null > /etc/hccn.conf"
         self.exec_cmd(cmd, "clear_old_config")
-    
-    #
+
+    # del step 2
     def del_old_ip_route(self, node):
         for i in range(8):
             cmd = "hccn_tool -i %d -ip_route -d ip 0.0.0.0 ip_mask 0 table %d" % \
@@ -98,7 +95,26 @@ class HCCN:
             self.exec_cmd(cmd, "del_old_ip_route", is_raise=False)
             cmd = "hccn_tool -i %d -ip_route -d ip %s ip_mask 24 table %d" % (i, self.IPs["common"]["route_ip"], 102+i)
             self.exec_cmd(cmd, "del_old_ip_route", is_raise=False)
-    
+
+    # del step 3
+    def del_old_arp(self, node):
+        # del arp
+        for i in range(8):
+            range_list = [0, 1, 2, 3] if i<=3 else [4, 5, 6, 7]
+            for j in range_list:
+                if i == j:
+                    continue
+                cmd = "hccn_tool -i %d -arp -d dev eth%d ip %s" % \
+                    (i, i, self.IPs[node][j]["ip"])
+                self.exec_cmd(cmd, "del_old_arp", is_raise=False)
+
+    # del step 4
+    def del_old_gateway_arp(self, node):
+        for i in range(8):
+            cmd = "hccn_tool -i %d -arp -d dev eth%d ip %s" % \
+                (i, i, self.IPs["common"]["gateway"])
+            self.exec_cmd(cmd, "del_old_gateway_arp", is_raise=False)
+
     #
     def set_config(self, node):
         print("==== set hccn config on %s ====" % node)
@@ -109,6 +125,14 @@ class HCCN:
 
         print(">>>del_old_ip_route...")
         self.del_old_ip_route(node)
+        print("done")
+
+        print(">>>del_old_arp...")
+        self.del_old_arp(node)
+        print("done")
+
+        print(">>>del_old_gateway_arp...")
+        self.del_old_gateway_arp(node)
         print("done")
 
         print(">>>get_mac...")
@@ -131,8 +155,8 @@ class HCCN:
         self.set_arp(node)
         print("done")
 
-        print(">>>step5.set_leaf_arp...")
-        self.set_leaf_arp(node)
+        print(">>>step5.set_gateway_arp...")
+        self.set_gateway_arp(node)
         print("done")
 
         print(">>>step6.set_mtu...")
@@ -144,7 +168,6 @@ if __name__ == "__main__":
         raise ValueError("run shell must be: python3 set_hccn.py node-x")
     # all_nodes = list(cfg.IPs.keys()).remove("common")
     if sys.argv[1] not in cfg.node_list:
-        raise ValueError("%s not in %s" % (sys.argv[1]), str(cfg.node_list))
+        raise ValueError("%s not in %s" % (sys.argv[1], str(cfg.node_list)))
     hccn = HCCN()
     hccn.set_config(sys.argv[1])
-
