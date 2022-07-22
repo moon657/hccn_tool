@@ -8,8 +8,68 @@ import shutil
 import subprocess
 import datetime
 import time
+import getopt
 
 import cfg
+
+RUN_MODE = "server"
+CLIENT = "node-1"
+SERVER = "node-2"
+SIZE = 4096
+ROCE_TYPE = "read"
+NUM = 1000
+
+def usage_help():
+    usage = """
+            usage :  
+                python roce_test_self.py  \
+                    --run_mode [mode] \
+                    --client [node] \
+                    --server [node] \
+                    -t <type> -s <size> -n <num>
+            param :
+                -h | --help  for help message
+                     --run_mode  server or client
+                     --client  client node name
+                     --server  server node name
+                -t | --type  <option> to set test type. type <option> could be "read send write"
+                -s | --size  <size> to set test size of packet .  <size> could be [16-2^23]
+                -n | --num   <num> to set test number of packet.  <num> could be [5-20000]
+            """
+    print(usage)
+
+def parse_args():
+    try:
+        options, args = getopt.getopt(sys.argv[1:], "hm:t:s:n:", \
+            ['help', 'run_mode=', 'client=', 'server=', 'type=', 'size=', 'num='])
+        for opt, opt_val in options:
+            if opt in ('-h', '--help'):
+                usage_help()
+                sys.exit()
+            elif opt in ('--run_mode'):
+                global RUN_MODE
+                RUN_MODE = opt_val
+            elif opt in ('--client'):
+                global CLIENT
+                CLIENT = opt_val
+            elif opt in ('--server'):
+                global SERVER
+                SERVER = opt_val
+            elif opt in ("-t", "--type"):
+                global ROCE_TYPE
+                ROCE_TYPE = opt_val
+            elif opt in ("-s", "--size"):
+                global SIZE
+                SIZE = opt_val
+            elif opt in ("-n", "--num"):
+                global NUM
+                NUM = opt_val
+            else:
+                usage_help()
+                sys.exit()
+    except getopt.GetoptError:
+        usage_help()
+        sys.exit()
 
 def exec_cmd(cmd, err_flag, is_raise=True):
     print(cmd)
@@ -56,24 +116,12 @@ def run_client(client_node, server_node, roce_type="read", size=4096, num=1000):
     f.close()
 
 if __name__ == "__main__":
-    #
-    if len(sys.argv) < 5:
-        raise ValueError("run shell must be: python3 roce_test_crouple.py server/client client_node server_node size roce_type num")
-    #
-    client_node = str(sys.argv[2])
-    server_node = str(sys.argv[3])
-    size = 4096
-    roce_type = "read"
-    num = 1000
-    if len(sys.argv) >= 5:
-        size = int(sys.argv[4])
-    if len(sys.argv) >= 6:
-        roce_type=int(sys.argv[5])
-    if len(sys.argv) >= 7:
-        num=int(sys.argv[6])
-    #
-    if sys.argv[1] == "server":
-        run_server(roce_type=roce_type, size=size, num=num)
-    elif sys.argv[1] == "client":
-        run_client(client_node, server_node, roce_type=roce_type, size=size, num=num)
+    parse_args()
+    if RUN_MODE == "server":
+        run_server(roce_type=ROCE_TYPE, size=SIZE, num=NUM)
+    elif RUN_MODE == "client":
+        run_client(CLIENT, SERVER, roce_type=ROCE_TYPE, size=SIZE, num=NUM)
+    else:
+        usage_help()
+        sys.exit()
 
